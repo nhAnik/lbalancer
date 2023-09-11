@@ -1,0 +1,9 @@
+port: 12345
+type: round-robin
+backends:
+  - url: http://localhost:9091
+    weight: 10
+  - url: http://localhost:9092
+    weight: 20
+  - url: http://localhost:9093
+    weight: 30
