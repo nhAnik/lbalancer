@@ -17,6 +17,7 @@ const (
 	maxAttempts         = 5
 	healthCheckTimeout  = 1 * time.Second
 	healthCheckInterval = 10 * time.Second
+	defaultLbType       = "round-robin"
 )
 
 type loadBalancer struct {
@@ -82,6 +83,9 @@ func createLb(configPath string) (*loadBalancer, error) {
 			return nil, errors.New("invalid negative weight")
 		}
 		backends = append(backends, backend)
+	}
+	if lbConf.Type == "" {
+		lbConf.Type = defaultLbType
 	}
 
 	lb := &loadBalancer{port: lbConf.Port}
