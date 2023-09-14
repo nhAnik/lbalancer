@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"sort"
 	"sync"
 )
 
@@ -115,4 +116,35 @@ func getWeightedNext(backends []*Backend) (*Backend, []*Backend) {
 	}
 	backends[selIdx].curWeight -= weightInc
 	return backends[selIdx], backends
+}
+
+type randomPool struct {
+	backendList
+	accWeights []int
+	mu         *sync.Mutex
+}
+
+func newRandomPool(backends []*Backend) *randomPool {
+	numOfBackends := len(backends)
+	rp := &randomPool{
+		backendList: backends,
+		accWeights:  make([]int, numOfBackends),
+		mu:          &sync.Mutex{},
+	}
+	rp.accWeights[0] = backends[0].weight
+	for i := 1; i < numOfBackends; i++ {
+		rp.accWeights[i] = rp.accWeights[i-1] + backends[i].weight
+	}
+	return rp
+}
+
+func (rp *randomPool) getNext() *Backend {
+	rp.mu.Lock()
+	defer rp.mu.Unlock()
+	numOfBackends := len(rp.backendList)
+	randWeight := rand.Int() % rp.accWeights[numOfBackends-1]
+	idx := sort.Search(numOfBackends, func(i int) bool {
+		return rp.accWeights[i] > randWeight
+	})
+	return rp.backendList[idx]
 }

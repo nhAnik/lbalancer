@@ -103,6 +103,8 @@ func createLb(configPath string) (*loadBalancer, error) {
 		}
 	case "least-conn":
 		lb.backendPool = newLeastConnPool(backends)
+	case "random":
+		lb.backendPool = newRandomPool(backends)
 	default:
 		return nil, errors.New("invalid load balancer type")
 	}

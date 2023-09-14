@@ -26,8 +26,9 @@ backends:
 
 ```
 
-Currently 3 types of load balancing methods are supported which can be mentioned in yaml file
+Currently 4 types of load balancing methods are supported which can be mentioned in yaml file
 through `type` field:
 1. Round robin: requests are forwarded to servers evenly.
 2. Weighted round robin: requests are forwarded to servers based on the mentioned `weight` in the yaml file.
 3. Least connections: requests are forwareded to server with least connection considering weight of the servers.
+4. Random: requests are forwareded to server randomly considering weight of the servers. 
