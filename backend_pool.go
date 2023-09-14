@@ -11,34 +11,36 @@ type backendPool interface {
 	getAllBackends() []*Backend
 }
 
+type backendList []*Backend
+
+func (bl backendList) getAllBackends() []*Backend {
+	return bl
+}
+
 type roundRobinPool struct {
-	backends []*Backend
-	curIdx   int
-	mu       *sync.Mutex
+	backendList
+	curIdx int
+	mu     *sync.Mutex
 }
 
 func newRoundRobinPool(backends []*Backend) *roundRobinPool {
 	return &roundRobinPool{
-		mu:       &sync.Mutex{},
-		backends: backends,
-		curIdx:   rand.Int() % len(backends),
+		mu:          &sync.Mutex{},
+		backendList: backends,
+		curIdx:      rand.Int() % len(backends),
 	}
 }
 
 func (rp *roundRobinPool) getNext() *Backend {
 	rp.mu.Lock()
 	defer rp.mu.Unlock()
-	curBackend := rp.backends[rp.curIdx]
-	rp.curIdx = (rp.curIdx + 1) % len(rp.backends)
+	curBackend := rp.backendList[rp.curIdx]
+	rp.curIdx = (rp.curIdx + 1) % len(rp.backendList)
 	return curBackend
 }
 
-func (rp *roundRobinPool) getAllBackends() []*Backend {
-	return rp.backends
-}
-
 type weightedRoundRobinPool struct {
-	backends   []*Backend
+	backendList
 	accWeights []int
 	mu         *sync.Mutex
 }
@@ -46,9 +48,9 @@ type weightedRoundRobinPool struct {
 func newWeightedRoundRobinPool(backends []*Backend) *weightedRoundRobinPool {
 	numOfBackends := len(backends)
 	wrrp := &weightedRoundRobinPool{
-		mu:         &sync.Mutex{},
-		backends:   backends,
-		accWeights: make([]int, numOfBackends),
+		mu:          &sync.Mutex{},
+		backendList: backends,
+		accWeights:  make([]int, numOfBackends),
 	}
 	wrrp.accWeights[0] = backends[0].weight
 	for i := 1; i < numOfBackends; i++ {
@@ -60,22 +62,18 @@ func newWeightedRoundRobinPool(backends []*Backend) *weightedRoundRobinPool {
 func (wp *weightedRoundRobinPool) getNext() *Backend {
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
-	return getWeightedNext(wp.backends, wp.accWeights)
-}
-
-func (wp *weightedRoundRobinPool) getAllBackends() []*Backend {
-	return wp.backends
+	return getWeightedNext(wp.backendList, wp.accWeights)
 }
 
 type leastConnPool struct {
-	backends []*Backend
-	mu       *sync.Mutex
+	backendList
+	mu *sync.Mutex
 }
 
 func newLeastConnPool(backends []*Backend) *leastConnPool {
 	lcp := &leastConnPool{
-		mu:       &sync.Mutex{},
-		backends: backends,
+		mu:          &sync.Mutex{},
+		backendList: backends,
 	}
 	return lcp
 }
@@ -84,15 +82,15 @@ func (lp *leastConnPool) getNext() *Backend {
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 	var minLoad int64
-	for i := 1; i < len(lp.backends); i++ {
-		if lp.backends[i].load < minLoad {
-			minLoad = lp.backends[i].load
+	for i := 1; i < len(lp.backendList); i++ {
+		if lp.backendList[i].load < minLoad {
+			minLoad = lp.backendList[i].load
 		}
 	}
 	var minBackends []*Backend
-	for i := 0; i < len(lp.backends); i++ {
-		if lp.backends[i].load == minLoad {
-			minBackends = append(minBackends, lp.backends[i])
+	for i := 0; i < len(lp.backendList); i++ {
+		if lp.backendList[i].load == minLoad {
+			minBackends = append(minBackends, lp.backendList[i])
 		}
 	}
 	accWeights := make([]int, len(minBackends))
@@ -101,10 +99,6 @@ func (lp *leastConnPool) getNext() *Backend {
 		accWeights[i] = accWeights[i-1] + minBackends[i].weight
 	}
 	return getWeightedNext(minBackends, accWeights)
-}
-
-func (lp *leastConnPool) getAllBackends() []*Backend {
-	return lp.backends
 }
 
 func getWeightedNext(backends []*Backend, accWeights []int) *Backend {

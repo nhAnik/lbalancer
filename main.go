@@ -21,8 +21,9 @@ const (
 )
 
 type loadBalancer struct {
-	backendPool backendPool
-	port        int
+	backendPool   backendPool
+	numOfBackends int
+	port          int
 }
 
 func (lb *loadBalancer) checkHealth() {
@@ -33,7 +34,7 @@ func (lb *loadBalancer) checkHealth() {
 }
 
 func (lb *loadBalancer) getNextBackend() *Backend {
-	tries, maxTries := 0, 2*len(lb.backendPool.getAllBackends())
+	tries, maxTries := 0, 2*lb.numOfBackends
 	curBackend := lb.backendPool.getNext()
 
 	for !curBackend.isAlive() {
@@ -88,7 +89,10 @@ func createLb(configPath string) (*loadBalancer, error) {
 		lbConf.Type = defaultLbType
 	}
 
-	lb := &loadBalancer{port: lbConf.Port}
+	lb := &loadBalancer{
+		port:          lbConf.Port,
+		numOfBackends: len(backends),
+	}
 	switch lbConf.Type {
 	case "round-robin":
 		if isWeighted {
