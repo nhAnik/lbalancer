@@ -2,7 +2,6 @@ package main
 
 import (
 	"math/rand"
-	"sort"
 	"sync"
 )
 
@@ -41,28 +40,21 @@ func (rp *roundRobinPool) getNext() *Backend {
 
 type weightedRoundRobinPool struct {
 	backendList
-	accWeights []int
-	mu         *sync.Mutex
+	mu *sync.Mutex
 }
 
 func newWeightedRoundRobinPool(backends []*Backend) *weightedRoundRobinPool {
-	numOfBackends := len(backends)
-	wrrp := &weightedRoundRobinPool{
+	return &weightedRoundRobinPool{
 		mu:          &sync.Mutex{},
 		backendList: backends,
-		accWeights:  make([]int, numOfBackends),
 	}
-	wrrp.accWeights[0] = backends[0].weight
-	for i := 1; i < numOfBackends; i++ {
-		wrrp.accWeights[i] = wrrp.accWeights[i-1] + backends[i].weight
-	}
-	return wrrp
 }
 
-func (wp *weightedRoundRobinPool) getNext() *Backend {
+func (wp *weightedRoundRobinPool) getNext() (next *Backend) {
 	wp.mu.Lock()
 	defer wp.mu.Unlock()
-	return getWeightedNext(wp.backendList, wp.accWeights)
+	next, wp.backendList = getWeightedNext(wp.backendList)
+	return
 }
 
 type leastConnPool struct {
@@ -71,14 +63,13 @@ type leastConnPool struct {
 }
 
 func newLeastConnPool(backends []*Backend) *leastConnPool {
-	lcp := &leastConnPool{
+	return &leastConnPool{
 		mu:          &sync.Mutex{},
 		backendList: backends,
 	}
-	return lcp
 }
 
-func (lp *leastConnPool) getNext() *Backend {
+func (lp *leastConnPool) getNext() (next *Backend) {
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 	var minLoad int64
@@ -88,26 +79,40 @@ func (lp *leastConnPool) getNext() *Backend {
 		}
 	}
 	var minBackends []*Backend
+	var minIndexes []int
 	for i := 0; i < len(lp.backendList); i++ {
 		if lp.backendList[i].load == minLoad {
 			minBackends = append(minBackends, lp.backendList[i])
+			minIndexes = append(minIndexes, i)
 		}
 	}
-	accWeights := make([]int, len(minBackends))
-	accWeights[0] = minBackends[0].weight
-	for i := 1; i < len(minBackends); i++ {
-		accWeights[i] = accWeights[i-1] + minBackends[i].weight
+	if len(minBackends) == 1 {
+		return minBackends[0]
 	}
-	return getWeightedNext(minBackends, accWeights)
+
+	next, minBackends = getWeightedNext(minBackends)
+	for i, idx := range minIndexes {
+		lp.backendList[idx] = minBackends[i]
+	}
+	return next
 }
 
-func getWeightedNext(backends []*Backend, accWeights []int) *Backend {
-	if len(backends) != len(accWeights) {
-		return nil
+func getWeightedNext(backends []*Backend) (*Backend, []*Backend) {
+	numOfBackends := len(backends)
+	selIdx := 0
+	for i := 1; i < numOfBackends; i++ {
+		if backends[i].curWeight > backends[selIdx].curWeight {
+			selIdx = i
+		}
 	}
-	randWeight := rand.Int() % accWeights[len(backends)-1]
-	idx := sort.Search(len(backends), func(i int) bool {
-		return accWeights[i] > randWeight
-	})
-	return backends[idx]
+	weightInc := 0
+	for i := 0; i < numOfBackends; i++ {
+		if i == selIdx {
+			continue
+		}
+		weightInc += backends[i].weight
+		backends[i].curWeight += backends[i].weight
+	}
+	backends[selIdx].curWeight -= weightInc
+	return backends[selIdx], backends
 }

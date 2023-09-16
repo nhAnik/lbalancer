@@ -80,6 +80,7 @@ func createLb(configPath string) (*loadBalancer, error) {
 		if bconf.Weight > 0 {
 			isWeighted = true
 			backend.weight = bconf.Weight
+			backend.curWeight = bconf.Weight
 		} else if bconf.Weight < 0 {
 			return nil, errors.New("invalid negative weight")
 		}

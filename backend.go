@@ -11,12 +11,13 @@ import (
 )
 
 type Backend struct {
-	URL      *url.URL
-	isAlive_ bool
-	proxy    *httputil.ReverseProxy
-	mu       *sync.Mutex
-	weight   int
-	load     int64
+	URL       *url.URL
+	isAlive_  bool
+	proxy     *httputil.ReverseProxy
+	mu        *sync.Mutex
+	weight    int
+	curWeight int
+	load      int64
 }
 
 func NewBackend(urlStr string) (*Backend, error) {
@@ -25,10 +26,11 @@ func NewBackend(urlStr string) (*Backend, error) {
 		return nil, err
 	}
 	backend := &Backend{
-		URL:      URL,
-		isAlive_: true,
-		mu:       &sync.Mutex{},
-		weight:   1,
+		URL:       URL,
+		isAlive_:  true,
+		mu:        &sync.Mutex{},
+		weight:    1,
+		curWeight: 1,
 	}
 	revProxy := httputil.NewSingleHostReverseProxy(URL)
 	revProxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
