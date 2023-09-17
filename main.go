@@ -14,16 +14,17 @@ import (
 )
 
 const (
-	maxAttempts         = 5
-	healthCheckTimeout  = 1 * time.Second
-	healthCheckInterval = 10 * time.Second
-	defaultLbType       = "round-robin"
+	maxAttempts                = 5
+	healthCheckTimeout         = 1 * time.Second
+	defaultHealthCheckInterval = 10 * time.Second
+	defaultLbType              = "round-robin"
 )
 
 type loadBalancer struct {
-	backendPool   backendPool
-	numOfBackends int
-	port          int
+	backendPool         backendPool
+	numOfBackends       int
+	port                int
+	healthCheckInterval time.Duration
 }
 
 func (lb *loadBalancer) checkHealth() {
@@ -58,9 +59,10 @@ func createLb(configPath string) (*loadBalancer, error) {
 		Weight int    `yaml:"weight"`
 	}
 	var lbConf struct {
-		Port     int           `yaml:"port"`
-		Type     string        `yaml:"type"`
-		Backends []backendConf `yaml:"backends"`
+		Port                int           `yaml:"port"`
+		Type                string        `yaml:"type"`
+		HealthCheckInterval int           `yaml:"health-check-interval"`
+		Backends            []backendConf `yaml:"backends"`
 	}
 	if err := yaml.Unmarshal(bytes, &lbConf); err != nil {
 		return nil, errors.New("invalid config file")
@@ -90,9 +92,14 @@ func createLb(configPath string) (*loadBalancer, error) {
 		lbConf.Type = defaultLbType
 	}
 
+	healthCheckInterval := defaultHealthCheckInterval
+	if lbConf.HealthCheckInterval > 0 {
+		healthCheckInterval = time.Duration(lbConf.HealthCheckInterval) * time.Second
+	}
 	lb := &loadBalancer{
-		port:          lbConf.Port,
-		numOfBackends: len(backends),
+		port:                lbConf.Port,
+		numOfBackends:       len(backends),
+		healthCheckInterval: healthCheckInterval,
 	}
 	switch lbConf.Type {
 	case "round-robin":
@@ -131,7 +138,7 @@ func main() {
 		panic(err)
 	}
 
-	t := time.NewTicker(healthCheckInterval)
+	t := time.NewTicker(lb.healthCheckInterval)
 	go func() {
 		lb.checkHealth()
 		for range t.C {

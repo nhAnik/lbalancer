@@ -1,5 +1,6 @@
 port: 12345
 type: round-robin
+health-check-interval: 5
 backends:
   - url: http://localhost:9091
     weight: 10
