@@ -25,6 +25,7 @@ type loadBalancer struct {
 	numOfBackends       int
 	port                int
 	healthCheckInterval time.Duration
+	healthCheckEnabled  bool
 }
 
 func (lb *loadBalancer) checkHealth() {
@@ -92,15 +93,20 @@ func createLb(configPath string) (*loadBalancer, error) {
 		lbConf.Type = defaultLbType
 	}
 
-	healthCheckInterval := defaultHealthCheckInterval
-	if lbConf.HealthCheckInterval > 0 {
-		healthCheckInterval = time.Duration(lbConf.HealthCheckInterval) * time.Second
-	}
 	lb := &loadBalancer{
-		port:                lbConf.Port,
-		numOfBackends:       len(backends),
-		healthCheckInterval: healthCheckInterval,
+		port:               lbConf.Port,
+		numOfBackends:      len(backends),
+		healthCheckEnabled: true,
 	}
+	switch interval := lbConf.HealthCheckInterval; {
+	case interval > 0:
+		lb.healthCheckInterval = time.Duration(interval) * time.Second
+	case interval < 0:
+		lb.healthCheckEnabled = false
+	default:
+		lb.healthCheckInterval = defaultHealthCheckInterval
+	}
+
 	switch lbConf.Type {
 	case "round-robin":
 		if isWeighted {
@@ -138,13 +144,16 @@ func main() {
 		panic(err)
 	}
 
-	t := time.NewTicker(lb.healthCheckInterval)
-	go func() {
-		lb.checkHealth()
-		for range t.C {
+	var t *time.Ticker
+	if lb.healthCheckEnabled {
+		t = time.NewTicker(lb.healthCheckInterval)
+		go func() {
 			lb.checkHealth()
-		}
-	}()
+			for range t.C {
+				lb.checkHealth()
+			}
+		}()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +185,9 @@ func main() {
 	go func() {
 		<-c
 		fmt.Println("\nClosing load balancer")
-		t.Stop()
+		if t != nil {
+			t.Stop()
+		}
 		server.Close()
 	}()
 	log.Fatal(server.ListenAndServe())

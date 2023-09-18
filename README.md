@@ -16,7 +16,7 @@ A sample `config.yaml` file can be like this:
 ```yaml
 port: 12345
 type: random
-health-check-interval: 5
+health-check-interval: -1
 backends:
   - url: http://localhost:9091
     weight: 10
@@ -27,7 +27,8 @@ backends:
 ```
 Here, `health-check-interval` field denotes the a time interval in second which should be a positive value.
 After each `health-check-interval` seconds, the load balancer will periodically check the health of the backends
-and update their status. The default value of this field is 10 seconds.
+and update their status. If the field `health-check-interval` is missing or set to `0` then it will be set to a
+default value which is 10 seconds. If the field is set to a negative value, then health checking will be disabled.
  
 Currently 4 types of load balancing methods are supported which can be mentioned in yaml file
 through `type` field:
