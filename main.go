@@ -190,5 +190,7 @@ func main() {
 		}
 		server.Close()
 	}()
+
+	log.Println("load balancer starting at port", lb.port)
 	log.Fatal(server.ListenAndServe())
 }
