@@ -176,7 +176,7 @@ func main() {
 		}
 	})
 	server := &http.Server{
-		Addr:    ":12345",
+		Addr:    fmt.Sprintf(":%d", lb.port),
 		Handler: mux,
 	}
 
