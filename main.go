@@ -76,16 +76,16 @@ func createLb(configPath string) (*loadBalancer, error) {
 	var backends []*Backend
 	isWeighted := false
 	for _, bconf := range lbConf.Backends {
-		backend, err := NewBackend(bconf.URL)
-		if err != nil {
-			return nil, err
-		}
+		weight := 1
 		if bconf.Weight > 0 {
 			isWeighted = true
-			backend.weight = bconf.Weight
-			backend.curWeight = bconf.Weight
+			weight = bconf.Weight
 		} else if bconf.Weight < 0 {
 			return nil, errors.New("invalid negative weight")
+		}
+		backend, err := newBackend(bconf.URL, weight)
+		if err != nil {
+			return nil, err
 		}
 		backends = append(backends, backend)
 	}

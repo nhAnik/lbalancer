@@ -20,7 +20,7 @@ type Backend struct {
 	load      int64
 }
 
-func NewBackend(urlStr string) (*Backend, error) {
+func newBackend(urlStr string, weight int) (*Backend, error) {
 	URL, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -29,8 +29,8 @@ func NewBackend(urlStr string) (*Backend, error) {
 		URL:       URL,
 		isAlive_:  true,
 		mu:        &sync.Mutex{},
-		weight:    1,
-		curWeight: 1,
+		weight:    weight,
+		curWeight: weight,
 	}
 	revProxy := httputil.NewSingleHostReverseProxy(URL)
 	revProxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
