@@ -1,4 +1,4 @@
-# lbalancer
+# lbalancer ![Build](https://github.com/nhAnik/lbalancer/actions/workflows/build.yaml/badge.svg)
 
 A simple load balancer application written in go.
 
