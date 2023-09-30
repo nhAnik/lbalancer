@@ -166,7 +166,7 @@ func main() {
 			}
 			backend.ServeHTTP(w, r)
 			if backend.isAlive() {
-				log.Println("Fowarded to ", backend.URL.String())
+				log.Println("Forwarded to ", backend.URL.String())
 				break
 			}
 			i++

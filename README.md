@@ -48,7 +48,7 @@ backends:
   - url: http://localhost:9092
     weight: 20
 ```
-3. Least connections: requests are forwareded to server with least connection considering weight of the servers.
+3. Least connections: requests are forwarded to server with least connection considering weight of the servers.
 ```yaml
 type: least-conn
 backends:
@@ -57,7 +57,7 @@ backends:
   - url: http://localhost:9092
     weight: 20
 ```
-4. Random: requests are forwareded to server randomly considering weight of the servers.
+4. Random: requests are forwarded to server randomly considering weight of the servers.
 ```yaml
 type: random
 backends:
